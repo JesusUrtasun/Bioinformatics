@@ -1,0 +1,137 @@
+---
+title: "Week 6 Worksheet"
+author: "Barry"
+date: "15/05/2020"
+output: html_document
+---
+
+# Introduction
+For this weeks worksheet I have tried my best to present you with a 'real' large omics dataset. We are going to a breast cancer dataset, GSE96058 from the GEO database. The study was conducted by the Population-Based Multicenter Sweden Cancerome Analysis Network—Breast Initiative. I have pre-filtered the dataset to contain only Basal and Her2 breast cancer subtypes, per pam50 subtye classification. 
+
+#### Load Libraries:
+```{R, echo = F, message=F}
+library(knitr)
+library(gplots)
+library(ggplot2)
+library(RColorBrewer)
+library(NbClust)
+library(factoextra)
+library(PCAtools)
+library(caret)
+library(ComplexHeatmap)
+library(circlize)
+library(kernlab)
+library(glmnet)
+```
+
+
+# Part 1: Read in Data
+a) Read in the gene expression and metadata file. (hint: set row.names = "Gene" for expression file and row.names = "Sample_ID" for the metadata file)
+
+
+b) Using `table()`, check the number of subtypes present in the metadata file
+
+# Part 2: Pre Process Data
+a) Check the distribution of expression values for the first 20 samples. Please use a boxplot.
+
+b) Check the distribution of 4 samples individually by using a histogram. To render 4 plots to one graphics device, call `par(mfrow=c(2,2))` at the beginning of the code block.
+
+
+What can we say about the distribution of the gene expression values? Do you think it follows a normal distribution?
+
+Do you think that the data requires any transformations? If so, check the distribution of the histograms by calling `hist(log2(mat[,1] +1))` to see the effect of a log2 transformation. Which one is skewed? 
+
+c) Scale and center the dataset by using the base R function. Recall the `scale()` function operates on columns. We want to scale the genes.
+
+
+d) Subset the dataset to extract the top 2000 variable genes. Take into consideration that the genes are on the rows of the gene expression matrix. When using the `apply()` function change it to `apply(mat,1,sd)`, which differs from the `apply(mat,2,sd)` call made in the learning materials. Can you see why we did this? Look up the documentation of `apply()` to see why. When subsetting the gene expression matrix, remember to subset by rows not columns. 
+
+
+# Part 3: Heatmaps/PCA
+a) Using `heatmap.2` and a distance + clustering method of your choice, generate sample to sample heatmaps of the dataset.
+Consult the learning materials for multiple examples. Ignore the error message about the color palette if produced.
+cex=.7)
+
+b) Produce a PCA plot using PCAtools. PC1 vs. PC2 should suffice. 
+
+c) Using complex heatmap, produce a heatmap of the expression patterns of the samples. 
+Note: set k = 2 for row clustering. 
+Hint : col=colorRamp2(c(-4,-2,0,2,4), c("green", "green4", "black", "red4", "red")) renders a better image
+
+# Part 4: Prepare Data for models
+
+a) Format the gene expression matrix to include subtype information:
+
+* Firstly, transpose the matrix so genes are on the columns
+
+* Using `merge()`, join the gene expression matrix and metadate file by "row.names"
+
+* remove the left over "Row.names" column, it should be the 1st or 2nd column. 
+
+
+b) split into training and test data (70% - 30% split)
+
+
+# Part 5: Choose models
+Run this block of code to generate tidy confusion matrix:
+```{R, echo=F, message=F}
+draw_confusion_matrix <- function(cm) {
+
+  layout(matrix(c(1,1,2)))
+  par(mar=c(2,2,2,2))
+  plot(c(100, 345), c(300, 450), type = "n", xlab="", ylab="", xaxt='n', yaxt='n')
+  title('CONFUSION MATRIX', cex.main=2)
+
+  # create the matrix 
+  rect(150, 430, 240, 370, col='#3F97D0')
+  text(195, 435, 'Class1', cex=1.2)
+  rect(250, 430, 340, 370, col='#F7AD50')
+  text(295, 435, 'Class2', cex=1.2)
+  text(125, 370, 'Predicted', cex=1.3, srt=90, font=2)
+  text(245, 450, 'Actual', cex=1.3, font=2)
+  rect(150, 305, 240, 365, col='#F7AD50')
+  rect(250, 305, 340, 365, col='#3F97D0')
+  text(140, 400, 'Class1', cex=1.2, srt=90)
+  text(140, 335, 'Class2', cex=1.2, srt=90)
+
+  # add in the cm results 
+  res <- as.numeric(cm$table)
+  text(195, 400, res[1], cex=1.6, font=2, col='white')
+  text(195, 335, res[2], cex=1.6, font=2, col='white')
+  text(295, 400, res[3], cex=1.6, font=2, col='white')
+  text(295, 335, res[4], cex=1.6, font=2, col='white')
+
+  # add in the specifics 
+  plot(c(100, 0), c(100, 0), type = "n", xlab="", ylab="", main = "DETAILS", xaxt='n', yaxt='n')
+  text(10, 85, names(cm$byClass[1]), cex=1.2, font=2)
+  text(10, 70, round(as.numeric(cm$byClass[1]), 3), cex=1.2)
+  text(30, 85, names(cm$byClass[2]), cex=1.2, font=2)
+  text(30, 70, round(as.numeric(cm$byClass[2]), 3), cex=1.2)
+  text(50, 85, names(cm$byClass[5]), cex=1.2, font=2)
+  text(50, 70, round(as.numeric(cm$byClass[5]), 3), cex=1.2)
+  text(70, 85, names(cm$byClass[6]), cex=1.2, font=2)
+  text(70, 70, round(as.numeric(cm$byClass[6]), 3), cex=1.2)
+  text(90, 85, names(cm$byClass[7]), cex=1.2, font=2)
+  text(90, 70, round(as.numeric(cm$byClass[7]), 3), cex=1.2)
+
+  # add in the accuracy information 
+  text(30, 35, names(cm$overall[1]), cex=1.5, font=2)
+  text(30, 20, round(as.numeric(cm$overall[1]), 3), cex=1.4)
+  text(70, 35, names(cm$overall[2]), cex=1.5, font=2)
+  text(70, 20, round(as.numeric(cm$overall[2]), 3), cex=1.4)
+}  
+```
+
+a) Before running a KNN model using `knn3()`, use `carets` `train()` function with method = "knn" and use Cross fold validation + tuning grid to plot the error rate vs. values for k in the training set.
+
+
+b) Now use the optimal value for K in your KNN model
+
+
+c) Use an Elastic net model on the training and test data. Use cross fold validation and a tuning grid for optimal values for lambda and alpha.
+
+
+d) Use a Random Forest model on the training and test data. Use cross fold validation in the model.
+
+
+e) *bonus* look up the documentation for carets `resamples()` function (hint: F1 to view help, specifically at the very bottom of the page). Use `dotplot()` on the `resamps` variable you made.
