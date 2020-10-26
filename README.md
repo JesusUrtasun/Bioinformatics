@@ -86,3 +86,8 @@ Distance metrics, clustering methods in unsupervised machine learning, visualise
 #### Machine Learning (Python)
 Introductory course on Python Machine Learning libaries (e.g. TensowFlow and Keras), linear regression and Neural Networks.
 For a mor specific course about Machine Learning visit [https://github.com/JesusUrtasun/MLcourse](https://github.com/JesusUrtasun/MLcourse)
+
+
+## Chapter 7
+
+### Next-Generation Sequencing datasets (NGS)
